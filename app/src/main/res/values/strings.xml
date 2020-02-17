@@ -1,3 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Five Field Kono - envomp</string>
+    <string name="template_start_text">X starts</string>
+    <string name="template_turn">currently x\'s turn</string>
+    <string name="start_button">Start</string>
+    <string name="gamemod_insertion_form_text">Select gamemode please</string>
+    <string name="first_move_display_text">Select who starts</string>
+    <string-array name="game_modes">
+        <item>Player vs Player</item>
+        <item>Player vs AI</item>
+        <item>AI vs AI</item>
+    </string-array>
 </resources>
