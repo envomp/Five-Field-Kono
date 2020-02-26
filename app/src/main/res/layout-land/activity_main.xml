@@ -14,15 +14,15 @@
         android:layout_height="0dp"
 
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="1"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/game_divider"
         app:layout_constraintTop_toTopOf="parent" />
 
     <include
         android:id="@+id/game_statistics"
         layout="@layout/game_statistics"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
 
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/game_divider"
@@ -36,7 +36,6 @@
         android:background="?android:attr/listDivider"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/game_board"
-        app:layout_constraintStart_toEndOf="@+id/game_statistics"
         app:layout_constraintTop_toTopOf="parent" />
 
 

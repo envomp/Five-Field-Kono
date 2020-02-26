@@ -6,6 +6,7 @@
     <string name="start_button">Start</string>
     <string name="gamemod_insertion_form_text">Select gamemode please</string>
     <string name="first_move_display_text">Select who starts</string>
+    <string name="game_title">Five Field Kono - envomp</string>
     <string-array name="game_modes">
         <item>Player vs Player</item>
         <item>Player vs AI</item>
