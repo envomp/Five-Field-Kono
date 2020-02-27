@@ -2,18 +2,20 @@ package ee.taltech.iti0213_2019s_hw1
 
 import android.os.Build
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import android.widget.*
 import android.widget.AdapterView.OnItemSelectedListener
 import androidx.appcompat.app.AppCompatActivity
-import kotlin.math.roundToInt
+import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity() {
     companion object {
         private val TAG = this::class.java.declaringClass!!.simpleName
+        private var tempBoard = arrayOf(intArrayOf())
+        private var AIChoiseY = -1;
+        private var AIChoiseX = -1;
     }
 
     private var firstAI = false;
@@ -43,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         intArrayOf(2, 0, 0, 0, 2),
         intArrayOf(2, 2, 2, 2, 2)
     )
+    private val AIdepth = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,8 +56,8 @@ class MainActivity : AppCompatActivity() {
         createSpinner()
         createSwitch()
         rewriteTemplates()
-        wireStartButton()
         wireGameButtons()
+        wireStartButton()
     }
 
     private fun wireGameButtons() {
@@ -62,42 +65,55 @@ class MainActivity : AppCompatActivity() {
             for (buttonId in buttonArray) {
                 val button = findViewById<Button>(buttonId)
                 button.setOnClickListener {
-                    if (hasGameStarted) {
-                        if (lastButtonClicked == -1) {
 
-                            if (isSelectedsTurn(button)) {
-                                lastButtonClicked = buttonId
-                            } else {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Incorrect move!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-
-                        } else {
-                            when {
-                                lastButtonClicked == buttonId -> {
-                                    resetMove()
-                                    colorBoard()
-                                }
-                                getAvailableMoves(findViewById(lastButtonClicked)).contains(buttonId) -> {
-                                    doMove(button)
-                                    colorBoard()
-                                }
-                                else -> {
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "Invalid move!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
+                    if (playerOneTurn) {
+                        if (!firstAI) {
+                            gameButtonLogic(button, buttonId)
+                        }
+                    } else {
+                        if (!secondAI) {
+                            gameButtonLogic(button, buttonId)
                         }
                     }
-
                 }
                 button.text = ""
+            }
+        }
+    }
+
+    private fun gameButtonLogic(button: Button, buttonId: Int) {
+        if (hasGameStarted) {
+            if (lastButtonClicked == -1) {
+
+                if (isSelectedsTurn(button)) {
+                    lastButtonClicked = buttonId
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Incorrect move!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+            } else {
+                when {
+                    lastButtonClicked == buttonId -> {
+                        resetMove()
+                        colorBoard()
+                    }
+                    getAvailableMoves(findViewById(lastButtonClicked)).contains(buttonId) -> {
+                        doMove(button)
+                        colorBoard()
+                        invokeAI()
+                    }
+                    else -> {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Invalid move!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             }
         }
     }
@@ -160,6 +176,10 @@ class MainActivity : AppCompatActivity() {
         gameBoard[lastY][lastX] = 0
         lastButtonClicked = -1
 
+        finalizeMove()
+    }
+
+    private fun finalizeMove() {
         playerOneTurn = !playerOneTurn
         if (!isGameOver()) {
             currentlyTurn()
@@ -169,6 +189,26 @@ class MainActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.currentPlayer).text = "Game over!"
             // idk. Celebrate or something
         }
+    }
+
+    private fun getAvailableMoves(y: Int, x: Int): ArrayList<IntArray> {
+
+        val moves = arrayListOf<IntArray>()
+
+        if (x > 0 && y > 0 && tempBoard[y - 1][x - 1] == 0) {
+            moves.add(intArrayOf(y - 1, x - 1))
+        }
+        if (x > 0 && y + 1 < 5 && tempBoard[y + 1][x - 1] == 0) {
+            moves.add(intArrayOf(y + 1, x - 1))
+        }
+        if (x + 1 < 5 && y + 1 < 5 && tempBoard[y + 1][x + 1] == 0) {
+            moves.add(intArrayOf(y + 1, x + 1))
+        }
+        if (x + 1 < 5 && y > 0 && tempBoard[y - 1][x + 1] == 0) {
+            moves.add(intArrayOf(y - 1, x + 1))
+        }
+
+        return moves
     }
 
     private fun getAvailableMoves(button: Button): ArrayList<Int> {
@@ -334,23 +374,65 @@ class MainActivity : AppCompatActivity() {
             colorBoard()
             currentlyTurn()
             startButton.text = "restart"
+            invokeAI()
+        }
+    }
 
-            if (this.isSwitchToggeled && this.selectedMode >= 1 || !this.isSwitchToggeled && this.selectedMode >= 2) {
-                // AI
-                doAIMove()
-                Log.d(TAG, "AI")
-            } else {
-                // Player
+    private fun invokeAI() {
+        if (firstAI && playerOneTurn || !playerOneTurn && secondAI) {
+            TimeUnit.SECONDS.sleep(1L)
+            doAIMove()
+
+            invokeAI()
+        }
+    }
+
+    private fun minMax(depth: Int, isBlueTurn: Boolean): Int {
+        var bestMove = -1
+        var bestValue = -1
+        if (depth == 0) {
+            // evaluate board
+            return 1
+        } else {
+            for (y in 0..4) {
+                for (x in 0..4) {
+                    if (gameBoard[y][x] == (if (isBlueTurn) 1 else 2)) {
+                        var moveCounter = 0
+                        for (move in getAvailableMoves(y, x)) {
+                            // do move
+                            tempBoard[move[0]][move[1]] = if (isBlueTurn) 1 else 2
+                            tempBoard[y][x] = 0
+                            // recursion
+                            if (minMax(depth - 1, !isBlueTurn) > bestValue) {
+                                bestMove = moveCounter
+                                if (depth == AIdepth) {
+                                    AIChoiseY = y
+                                    AIChoiseX = x
+                                }
+                            }
+                            // undo move
+                            tempBoard[y][x] = if (isBlueTurn) 1 else 2
+                            tempBoard[move[0]][move[1]] = 0
+                            moveCounter += 1
+                        }
+                    }
+                }
             }
+            return bestMove
         }
     }
 
     private fun doAIMove() {
+        Log.d(TAG, "AI")
+        tempBoard = gameBoard.deepCopy()
+        var AIindex = minMax(AIdepth, playerOneTurn && !isSwitchToggeled)
+        var move = getAvailableMoves(AIChoiseY, AIChoiseX)[AIindex]
 
-
-        if (selectedMode == 3) {
-            // reccursion
-        }
+        // make move
+        gameBoard[move[0]][move[1]] = if (playerOneTurn && !isSwitchToggeled) 1 else 2
+        gameBoard[AIChoiseY][AIChoiseX] = 0
+        finalizeMove()
+        colorBoard()
     }
 
     private fun colorBoard() {
@@ -410,8 +492,8 @@ class MainActivity : AppCompatActivity() {
                 position: Int,
                 id: Long
             ) {
-                Log.d(TAG, "spinner onItemSelected $id")
                 selectedMode = id.toInt()
+                Log.d(TAG, "spinner onItemSelected $id")
                 rewriteTemplates()
             }
 
@@ -425,17 +507,35 @@ class MainActivity : AppCompatActivity() {
         // switch text
         val switch: TextView = findViewById(R.id.switchTurn)
 
-        if (this.isSwitchToggeled && this.selectedMode >= 1 || !this.isSwitchToggeled && this.selectedMode >= 2) {
-            if (this.isSwitchToggeled) {
-                switch.text = "red AI"
-            } else {
-                switch.text = "blue AI"
+        when (this.selectedMode) {
+            1 -> {
+                if (this.isSwitchToggeled) {
+                    switch.text = "red AI"
+                    firstAI = true
+                    secondAI = false
+                } else {
+                    switch.text = "blue player"
+                    firstAI = false
+                    secondAI = true
+                }
             }
-        } else {
-            if (this.isSwitchToggeled) {
-                switch.text = "red Player"
-            } else {
-                switch.text = "blue Player"
+            2 -> {
+                if (this.isSwitchToggeled) {
+                    switch.text = "red AI"
+                } else {
+                    switch.text = "blue AI"
+                }
+                secondAI = true
+                firstAI = true
+            }
+            else -> {
+                if (this.isSwitchToggeled) {
+                    switch.text = "red Player"
+                } else {
+                    switch.text = "blue Player"
+                }
+                firstAI = false
+                secondAI = false
             }
         }
     }
@@ -473,11 +573,43 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         Log.d(TAG, "lifecycle onSaveInstanceState")
+        outState.putBoolean("firstAI", this.firstAI)
+        outState.putBoolean("secondAI", this.secondAI)
+        outState.putBoolean("isSwitchToggeled", this.isSwitchToggeled)
+        outState.putInt("selectedMode", this.selectedMode)
+        outState.putBoolean("hasGameStarted", this.hasGameStarted)
+        outState.putBoolean("playerOneTurn", this.playerOneTurn)
+        outState.putIntArray("arr1", this.gameBoard[0])
+        outState.putIntArray("arr2", this.gameBoard[1])
+        outState.putIntArray("arr3", this.gameBoard[2])
+        outState.putIntArray("arr4", this.gameBoard[3])
+        outState.putIntArray("arr5", this.gameBoard[4])
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
         Log.d(TAG, "lifecycle onRestoreInstanceState")
+
+        this.firstAI = savedInstanceState.get("firstAI") as Boolean
+        this.secondAI = savedInstanceState.get("secondAI") as Boolean
+        this.isSwitchToggeled = savedInstanceState.get("isSwitchToggeled") as Boolean
+        this.selectedMode = savedInstanceState.get("selectedMode") as Int
+        this.hasGameStarted = savedInstanceState.get("hasGameStarted") as Boolean
+        this.playerOneTurn = savedInstanceState.get("playerOneTurn") as Boolean
+        this.gameBoard[0] = savedInstanceState.get("arr1") as IntArray
+        this.gameBoard[1] = savedInstanceState.get("arr2") as IntArray
+        this.gameBoard[2] = savedInstanceState.get("arr3") as IntArray
+        this.gameBoard[3] = savedInstanceState.get("arr4") as IntArray
+        this.gameBoard[4] = savedInstanceState.get("arr5") as IntArray
+
+        this.colorBoard()
+        this.currentlyTurn()
+
+        val startButton = findViewById<Button>(R.id.start_game)
+        if (this.hasGameStarted) {
+            startButton.text = "restart"
+        }
+
     }
 
 }
