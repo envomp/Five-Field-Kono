@@ -414,7 +414,7 @@ class MainActivity : AppCompatActivity() {
             var curBestInDepth = if (isBlueTurn) -100000 else 1000000
             for (y in 0..4) {
                 for (x in 0..4) {
-                    if (gameBoard[y][x] == (if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb)) {
+                    if (tempBoard[y][x] == (if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb)) {
                         for (move in getAvailableMoves(y, x)) {
                             // do move
                             tempBoard[move[0]][move[1]] = if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb
@@ -522,7 +522,7 @@ class MainActivity : AppCompatActivity() {
 
         for (y in 0..4) {
             for (x in 0..4) {
-                if (gameBoard[y][x] == (if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb)) {
+                if (tempBoard[y][x] == (if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb)) {
                     var moveCounter = 0
                     for (move in getAvailableMoves(y, x)) {
                         // do move
