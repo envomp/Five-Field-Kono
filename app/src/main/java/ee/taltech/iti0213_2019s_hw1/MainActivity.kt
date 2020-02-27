@@ -393,7 +393,7 @@ class MainActivity : AppCompatActivity() {
                         // This method will be executed once the timer is over
                     }
                 },
-                1000 // value in milliseconds
+                100 // value in milliseconds
             )
         }
     }
@@ -402,13 +402,10 @@ class MainActivity : AppCompatActivity() {
 
         if (depth == 0) {
 
-            var endPositionsBlue = 0
-            var endPositionsRed = 0
+            val endPositionsBlue = blueWeights()
+            val endPositionsRed = redWeights()
 
-            endPositionsBlue = blueWeights(endPositionsBlue)
-            endPositionsRed = redWeights(endPositionsRed)
-
-            return if (!isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue
+            return if (!isBlueTurn) endPositionsBlue else endPositionsRed
 
         } else {
             var curBestInDepth = if (isBlueTurn) -100000 else 1000000
@@ -440,22 +437,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun blueWeights(endPositionsBlue: Int): Int {
-        var endPositionsBlue1 = endPositionsBlue
+    private fun blueWeights(): Int {
+        var endPositionsBlue1 = 0
         for (pos in tempBoard[4]) {
             if (pos == Color.BLUE.rgb) {
-                endPositionsBlue1 += 15
+                endPositionsBlue1 += 50
             }
         }
         if (tempBoard[3][0] == Color.BLUE.rgb) {
-            endPositionsBlue1 += 10
+            endPositionsBlue1 += 46
         }
         if (tempBoard[3][4] == Color.BLUE.rgb) {
-            endPositionsBlue1 += 10
+            endPositionsBlue1 += 46
         }
         for (pos in tempBoard[3]) {
             if (pos == Color.BLUE.rgb) {
-                endPositionsBlue1 += 5
+                endPositionsBlue1 += 4
             }
         }
         for (pos in tempBoard[2]) {
@@ -476,22 +473,22 @@ class MainActivity : AppCompatActivity() {
         return endPositionsBlue1
     }
 
-    private fun redWeights(endPositionsRed: Int): Int {
-        var endPositionsBlue1 = endPositionsRed
+    private fun redWeights(): Int {
+        var endPositionsBlue1 = 0
         for (pos in tempBoard[0]) {
             if (pos == Color.RED.rgb) {
-                endPositionsBlue1 += 15
+                endPositionsBlue1 += 50
             }
         }
         if (tempBoard[1][0] == Color.RED.rgb) {
-            endPositionsBlue1 += 10
+            endPositionsBlue1 += 46
         }
         if (tempBoard[1][4] == Color.RED.rgb) {
-            endPositionsBlue1 += 10
+            endPositionsBlue1 += 46
         }
         for (pos in tempBoard[1]) {
             if (pos == Color.RED.rgb) {
-                endPositionsBlue1 += 5
+                endPositionsBlue1 += 4
             }
         }
         for (pos in tempBoard[2]) {
