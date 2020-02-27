@@ -8,16 +8,13 @@ import android.view.View
 import android.widget.*
 import android.widget.AdapterView.OnItemSelectedListener
 import androidx.appcompat.app.AppCompatActivity
+import kotlin.math.min
 
 
 class MainActivity : AppCompatActivity() {
     companion object {
         private val TAG = this::class.java.declaringClass!!.simpleName
         private var tempBoard = arrayOf(intArrayOf())
-        private var AIChoiseY = -1
-        private var AIChoiseX = -1
-        private var AIBestMove = 0
-        private var AIBestValue = -100000
         private var gameUID = 0
     }
 
@@ -50,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         intArrayOf(2, 0, 0, 0, 2),
         intArrayOf(2, 2, 2, 2, 2)
     )
-    private val AIdepth = 1
+    private val AIdepth = 3
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -403,7 +400,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun minMax(depth: Int, isBlueTurn: Boolean): Int {
 
-        var curBestInDepth = -100000
         if (depth == 0) {
 
             var endPositionsBlue = 0
@@ -412,45 +408,30 @@ class MainActivity : AppCompatActivity() {
             endPositionsBlue = blueWeights(endPositionsBlue)
             endPositionsRed = redWeights(endPositionsRed)
 
-            Log.d(
-                TAG,
-                "___Value    " + (if (!isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue).toString()
-            )
-            return if (!isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue
+            return if (isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue
 
         } else {
-
+            var curBestInDepth = if (isBlueTurn) -100000 else 1000000
             for (y in 0..4) {
                 for (x in 0..4) {
-                    if (gameBoard[y][x] == (if (isBlueTurn) 1 else 2)) {
-                        var moveCounter = 0
+                    if (gameBoard[y][x] == (if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb)) {
                         for (move in getAvailableMoves(y, x)) {
                             // do move
-                            tempBoard[move[0]][move[1]] = if (isBlueTurn) 1 else 2
+                            tempBoard[move[0]][move[1]] = if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb
                             tempBoard[y][x] = 0
+
                             // recursion
-                            var temp = minMax(depth - 1, !isBlueTurn)
-                            if (depth == AIdepth) {
-                                if (temp >= AIBestValue) {
-                                    AIBestValue = temp
-                                    AIBestMove = moveCounter
-                                    AIChoiseY = y
-                                    AIChoiseX = x
-                                    Log.d(
-                                        TAG,
-                                        "NEW BEST______   $AIChoiseY     $AIChoiseX     $AIBestMove     $AIBestValue"
-                                    )
-                                }
+                            val temp = minMax(depth - 1, !isBlueTurn)
+
+                            if (isBlueTurn) {
+                                curBestInDepth = kotlin.math.max(temp, curBestInDepth)
                             } else {
-                                if (temp >= curBestInDepth) {
-                                    curBestInDepth = temp
-                                }
+                                curBestInDepth = min(temp, curBestInDepth)
                             }
 
                             // undo move
-                            tempBoard[y][x] = if (isBlueTurn) 1 else 2
+                            tempBoard[y][x] = if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb
                             tempBoard[move[0]][move[1]] = 0
-                            moveCounter += 1
                         }
                     }
                 }
@@ -532,17 +513,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun doAIMove() {
-        Log.d(TAG, "START")
         tempBoard = gameBoard.deepCopy()
-        AIBestMove = 0
-        AIBestValue = -100000
-        minMax(AIdepth, playerOneTurn == !isSwitchToggeled)
-        Log.d(TAG, "END   $AIChoiseY     $AIChoiseX     $AIBestMove")
-        var move = getAvailableMoves(AIChoiseY, AIChoiseX)[AIBestMove]
+        val isBlueTurn = playerOneTurn == !isSwitchToggeled
+        var maxScore = -10000
+        var aIChoiceY = -1
+        var aIChoiceX = -1
+        var aIBestMove = 0
+
+        for (y in 0..4) {
+            for (x in 0..4) {
+                if (gameBoard[y][x] == (if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb)) {
+                    var moveCounter = 0
+                    for (move in getAvailableMoves(y, x)) {
+                        // do move
+                        tempBoard[move[0]][move[1]] =
+                            if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb
+                        tempBoard[y][x] = 0
+                        // calculate value
+                        val temp = minMax(AIdepth, isBlueTurn)
+                        if (temp >= maxScore) {
+                            maxScore = temp
+                            aIBestMove = moveCounter
+                            aIChoiceY = y
+                            aIChoiceX = x
+                        }
+                        // undo move
+                        tempBoard[y][x] = if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb
+                        tempBoard[move[0]][move[1]] = 0
+                        moveCounter += 1
+                    }
+                }
+            }
+        }
+
+        val move = getAvailableMoves(aIChoiceY, aIChoiceX)[aIBestMove]
 
         // make move
-        gameBoard[move[0]][move[1]] = if (playerOneTurn == !isSwitchToggeled) 1 else 2
-        gameBoard[AIChoiseY][AIChoiseX] = 0
+        gameBoard[move[0]][move[1]] = if (isBlueTurn) Color.BLUE.rgb else Color.RED.rgb
+        gameBoard[aIChoiceY][aIChoiceX] = Color.WHITE.rgb
         finalizeMove()
         colorBoard()
     }
