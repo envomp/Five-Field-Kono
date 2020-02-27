@@ -2,20 +2,23 @@ package ee.taltech.iti0213_2019s_hw1
 
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.View
 import android.widget.*
 import android.widget.AdapterView.OnItemSelectedListener
 import androidx.appcompat.app.AppCompatActivity
-import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity() {
     companion object {
         private val TAG = this::class.java.declaringClass!!.simpleName
         private var tempBoard = arrayOf(intArrayOf())
-        private var AIChoiseY = -1;
-        private var AIChoiseX = -1;
+        private var AIChoiseY = -1
+        private var AIChoiseX = -1
+        private var AIBestMove = 0
+        private var AIBestValue = -100000
+        private var gameUID = 0
     }
 
     private var firstAI = false;
@@ -33,11 +36,13 @@ class MainActivity : AppCompatActivity() {
         intArrayOf(0, 0, 0, 0, 0)
     )
     private var buttonMatrix = arrayOf(IntArray(0));
-    /**
-     * Blue is 1
-     * Red is 2
-     * Empty board is 0
-     * **/
+
+    enum class Color(val rgb: Int) {
+        RED(2),
+        WHITE(0),
+        BLUE(1)
+    }
+
     private val startBoard = arrayOf(
         intArrayOf(1, 1, 1, 1, 1),
         intArrayOf(1, 0, 0, 0, 1),
@@ -119,20 +124,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isGameOver(): Boolean {
-        return gameBoard[0][0] == 2 &&
-                gameBoard[0][1] == 2 &&
-                gameBoard[0][2] == 2 &&
-                gameBoard[0][3] == 2 &&
-                gameBoard[0][4] == 2 &&
-                gameBoard[1][0] == 2 &&
-                gameBoard[1][4] == 2 ||
-                gameBoard[4][0] == 1 &&
-                gameBoard[4][1] == 1 &&
-                gameBoard[4][2] == 1 &&
-                gameBoard[4][3] == 1 &&
-                gameBoard[4][4] == 1 &&
-                gameBoard[3][0] == 1 &&
-                gameBoard[3][4] == 1
+        return gameBoard[0][0] == Color.RED.rgb &&
+                gameBoard[0][1] == Color.RED.rgb &&
+                gameBoard[0][2] == Color.RED.rgb &&
+                gameBoard[0][3] == Color.RED.rgb &&
+                gameBoard[0][4] == Color.RED.rgb &&
+                gameBoard[1][0] == Color.RED.rgb &&
+                gameBoard[1][4] == Color.RED.rgb ||
+                gameBoard[4][0] == Color.BLUE.rgb &&
+                gameBoard[4][1] == Color.BLUE.rgb &&
+                gameBoard[4][2] == Color.BLUE.rgb &&
+                gameBoard[4][3] == Color.BLUE.rgb &&
+                gameBoard[4][4] == Color.BLUE.rgb &&
+                gameBoard[3][0] == Color.BLUE.rgb &&
+                gameBoard[3][4] == Color.BLUE.rgb
 
     }
 
@@ -140,7 +145,7 @@ class MainActivity : AppCompatActivity() {
         if (playerOneTurn == !isSwitchToggeled) {
             val y = getYPos(button)
             val x = getXPos(button)
-            if (gameBoard[y][x] == 1) {
+            if (gameBoard[y][x] == Color.BLUE.rgb) {
                 button.setBackgroundColor(resources.getColor(R.color.colorBlueMove))
                 for (more in getAvailableMoves(button)) {
                     findViewById<Button>(more).setBackgroundColor(resources.getColor(R.color.colorBlueMove))
@@ -150,7 +155,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             val y = getYPos(button)
             val x = getXPos(button)
-            if (gameBoard[y][x] == 2) {
+            if (gameBoard[y][x] == Color.RED.rgb) {
                 button.setBackgroundColor(resources.getColor(R.color.colorRedMove))
                 for (more in getAvailableMoves(button)) {
                     findViewById<Button>(more).setBackgroundColor(resources.getColor(R.color.colorRedMove))
@@ -165,15 +170,15 @@ class MainActivity : AppCompatActivity() {
         if (playerOneTurn == !isSwitchToggeled) {
             val y = getYPos(button)
             val x = getXPos(button)
-            gameBoard[y][x] = 1
+            gameBoard[y][x] = Color.BLUE.rgb
         } else {
             val y = getYPos(button)
             val x = getXPos(button)
-            gameBoard[y][x] = 2
+            gameBoard[y][x] = Color.RED.rgb
         }
         val lastY = getYPos(findViewById(lastButtonClicked))
         val lastX = getXPos(findViewById(lastButtonClicked))
-        gameBoard[lastY][lastX] = 0
+        gameBoard[lastY][lastX] = Color.WHITE.rgb
         lastButtonClicked = -1
 
         finalizeMove()
@@ -274,10 +279,10 @@ class MainActivity : AppCompatActivity() {
         val x = getXPos(button)
 
         when {
-            this.gameBoard[y][x] == 0 -> { // white
+            this.gameBoard[y][x] == Color.WHITE.rgb -> { // white
                 button.setBackgroundColor(resources.getColor(R.color.colorWhite))
             }
-            this.gameBoard[y][x] == 1 -> { // blue
+            this.gameBoard[y][x] == Color.BLUE.rgb -> { // blue
                 button.setBackgroundColor(resources.getColor(R.color.colorBlue))
             }
             else -> { //red
@@ -368,6 +373,7 @@ class MainActivity : AppCompatActivity() {
         val startButton = findViewById<Button>(R.id.start_game)
         startButton.setOnClickListener {
             hasGameStarted = true
+            gameUID += 1
             gameBoard = startBoard.deepCopy()
             lastButtonClicked = -1;
             playerOneTurn = true
@@ -380,20 +386,40 @@ class MainActivity : AppCompatActivity() {
 
     private fun invokeAI() {
         if (firstAI && playerOneTurn || !playerOneTurn && secondAI) {
-            TimeUnit.SECONDS.sleep(1L)
-            doAIMove()
 
-            invokeAI()
+            var lastUID = gameUID
+            Handler().postDelayed(
+                {
+                    if (hasGameStarted && lastUID == gameUID) {
+                        doAIMove()
+                        invokeAI()
+                        // This method will be executed once the timer is over
+                    }
+                },
+                1000 // value in milliseconds
+            )
         }
     }
 
     private fun minMax(depth: Int, isBlueTurn: Boolean): Int {
-        var bestMove = -1
-        var bestValue = -1
+
+        var curBestInDepth = -100000
         if (depth == 0) {
-            // evaluate board
-            return 1
+
+            var endPositionsBlue = 0
+            var endPositionsRed = 0
+
+            endPositionsBlue = blueWeights(endPositionsBlue)
+            endPositionsRed = redWeights(endPositionsRed)
+
+            Log.d(
+                TAG,
+                "___Value    " + (if (!isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue).toString()
+            )
+            return if (!isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue
+
         } else {
+
             for (y in 0..4) {
                 for (x in 0..4) {
                     if (gameBoard[y][x] == (if (isBlueTurn) 1 else 2)) {
@@ -403,13 +429,24 @@ class MainActivity : AppCompatActivity() {
                             tempBoard[move[0]][move[1]] = if (isBlueTurn) 1 else 2
                             tempBoard[y][x] = 0
                             // recursion
-                            if (minMax(depth - 1, !isBlueTurn) > bestValue) {
-                                bestMove = moveCounter
-                                if (depth == AIdepth) {
+                            var temp = minMax(depth - 1, !isBlueTurn)
+                            if (depth == AIdepth) {
+                                if (temp >= AIBestValue) {
+                                    AIBestValue = temp
+                                    AIBestMove = moveCounter
                                     AIChoiseY = y
                                     AIChoiseX = x
+                                    Log.d(
+                                        TAG,
+                                        "NEW BEST______   $AIChoiseY     $AIChoiseX     $AIBestMove     $AIBestValue"
+                                    )
+                                }
+                            } else {
+                                if (temp >= curBestInDepth) {
+                                    curBestInDepth = temp
                                 }
                             }
+
                             // undo move
                             tempBoard[y][x] = if (isBlueTurn) 1 else 2
                             tempBoard[move[0]][move[1]] = 0
@@ -418,18 +455,93 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            return bestMove
+            return curBestInDepth
         }
     }
 
+    private fun blueWeights(endPositionsBlue: Int): Int {
+        var endPositionsBlue1 = endPositionsBlue
+        for (pos in tempBoard[4]) {
+            if (pos == Color.BLUE.rgb) {
+                endPositionsBlue1 += 15
+            }
+        }
+        if (tempBoard[3][0] == Color.BLUE.rgb) {
+            endPositionsBlue1 += 10
+        }
+        if (tempBoard[3][4] == Color.BLUE.rgb) {
+            endPositionsBlue1 += 10
+        }
+        for (pos in tempBoard[3]) {
+            if (pos == Color.BLUE.rgb) {
+                endPositionsBlue1 += 5
+            }
+        }
+        for (pos in tempBoard[2]) {
+            if (pos == Color.BLUE.rgb) {
+                endPositionsBlue1 += 3
+            }
+        }
+        for (pos in tempBoard[1]) {
+            if (pos == Color.BLUE.rgb) {
+                endPositionsBlue1 += 2
+            }
+        }
+        for (pos in tempBoard[0]) {
+            if (pos == Color.BLUE.rgb) {
+                endPositionsBlue1 += 1
+            }
+        }
+        return endPositionsBlue1
+    }
+
+    private fun redWeights(endPositionsRed: Int): Int {
+        var endPositionsBlue1 = endPositionsRed
+        for (pos in tempBoard[0]) {
+            if (pos == Color.RED.rgb) {
+                endPositionsBlue1 += 15
+            }
+        }
+        if (tempBoard[1][0] == Color.RED.rgb) {
+            endPositionsBlue1 += 10
+        }
+        if (tempBoard[1][4] == Color.RED.rgb) {
+            endPositionsBlue1 += 10
+        }
+        for (pos in tempBoard[1]) {
+            if (pos == Color.RED.rgb) {
+                endPositionsBlue1 += 5
+            }
+        }
+        for (pos in tempBoard[2]) {
+            if (pos == Color.RED.rgb) {
+                endPositionsBlue1 += 3
+            }
+        }
+        for (pos in tempBoard[3]) {
+            if (pos == Color.RED.rgb) {
+                endPositionsBlue1 += 2
+            }
+        }
+        for (pos in tempBoard[4]) {
+            if (pos == Color.RED.rgb) {
+                endPositionsBlue1 += 1
+            }
+        }
+        return endPositionsBlue1
+    }
+
     private fun doAIMove() {
-        Log.d(TAG, "AI")
+        Log.d(TAG, "START")
         tempBoard = gameBoard.deepCopy()
-        var AIindex = minMax(AIdepth, playerOneTurn && !isSwitchToggeled)
-        var move = getAvailableMoves(AIChoiseY, AIChoiseX)[AIindex]
+        AIBestMove = 0
+        AIBestValue = -100000
+        minMax(AIdepth, playerOneTurn == !isSwitchToggeled)
+        Log.d(TAG, "END   $AIChoiseY     $AIChoiseX     $AIBestMove")
+        var move = getAvailableMoves(AIChoiseY, AIChoiseX)[AIBestMove]
 
         // make move
-        gameBoard[move[0]][move[1]] = if (playerOneTurn && !isSwitchToggeled) 1 else 2
+        gameBoard[move[0]][move[1]] = if (playerOneTurn == !isSwitchToggeled) 1 else 2
         gameBoard[AIChoiseY][AIChoiseX] = 0
         finalizeMove()
         colorBoard()
