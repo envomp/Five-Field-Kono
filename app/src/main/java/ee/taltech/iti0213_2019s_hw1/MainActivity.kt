@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         intArrayOf(2, 0, 0, 0, 2),
         intArrayOf(2, 2, 2, 2, 2)
     )
-    private val AIdepth = 3
+    private val AIdepth = 5
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -408,7 +408,7 @@ class MainActivity : AppCompatActivity() {
             endPositionsBlue = blueWeights(endPositionsBlue)
             endPositionsRed = redWeights(endPositionsRed)
 
-            return if (isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue
+            return if (!isBlueTurn) 2 * endPositionsBlue - endPositionsRed else 2 * endPositionsRed - endPositionsBlue
 
         } else {
             var curBestInDepth = if (isBlueTurn) -100000 else 1000000
