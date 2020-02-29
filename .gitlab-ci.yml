@@ -16,8 +16,8 @@ variables:
 cache:
   policy: pull
   key: ${CI_PROJECT_ID}
-    paths:
-      - .gradle/
+  paths:
+    - .gradle/
 
 stages:
   - build
@@ -25,8 +25,10 @@ stages:
 
 assemble:
   when:
-    manual allow_failure:
-      false stage: build
+    manual
+  allow_failure:
+    false
+  stage: build
 
   tags:
     - androidRunner
