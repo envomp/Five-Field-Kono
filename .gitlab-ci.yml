@@ -1,6 +1,8 @@
 image: jangrewe/gitlab-ci-android:latest
+
 variables:
-  #Change it to SCREENSHOT or ESPRESSO REPORT_TYPE: $SCREENSHOT
+  #Change it to SCREENSHOT or ESPRESSO
+  REPORT_TYPE: $SCREENSHOT
   #
   #DO NOT MODIFY THESE VALUES
   #
@@ -9,7 +11,6 @@ variables:
   BUILDS_PATH: "$ROOT_PATH/builds/$SUB_TOKEN/0/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME"
   TESTLAB_RUNNER_PATH: "$ROOT_PATH/jar/TestlabRunner.jar"
   SPOON_RUNNER_PATH: "$ROOT_PATH/jar/libs/SpoonRunner.jar"
-
   SCREENSHOT: "pdf" #use it for screenshot tests
   ESPRESSO: "html" #use it for espresso testing
 
@@ -24,33 +25,25 @@ stages:
   - test
 
 assemble:
-  when:
-    manual
-  allow_failure:
-    false
+  when: manual
+  allow_failure: false
   stage: build
-
   tags:
     - androidRunner
-
   before_script:
     - export GRADLE_USER_HOME=$(pwd)/.gradle
     - chmod +x ./gradlew
-
   script:
     - ./gradlew assemble
     - ./gradlew assembleAndroidTest
-
   artifacts:
     paths:
       - app/build/outputs/apk
 
 install:
   variables:
-    GIT_STRATEGY:
-      none
-  stage:
-    test
+    GIT_STRATEGY: none
+  stage: test
   dependencies:
     - assemble
   tags:
