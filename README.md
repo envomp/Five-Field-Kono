@@ -1,4 +1,6 @@
-# HW1
+# Five Field Kono
+
+Check the report.pdf for screenshots
 
 Students with student code ending with:  
 0..4 - **Dara** (Nigerian logic game)  
